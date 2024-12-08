@@ -10,7 +10,7 @@ This allows for new ways of consuming AI generated content, such as collaborativ
 
 # Where can I use it?
 
-AiTube 2 is not ready yet: this is an experimental side project and the [platform](https://aitube.ai), code and documentation will be in development for most of 2025.
+AiTube 2 is not ready yet: this is an experimental side project and the [platform](https://aitube.at), code and documentation will be in development for most of 2025.
 
 # Why can't I use it?
 
