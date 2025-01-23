@@ -126,7 +126,7 @@ class ClipQueueManager {
        _cacheService = cacheService ?? CacheService();
 
   bool get canStartNewGeneration => 
-      _activeGenerations.length < Configuration.renderQueueMaxConcurrentGenerations;
+      _activeGenerations.length < Configuration.instance.renderQueueMaxConcurrentGenerations;
   int get pendingGenerations => _clipBuffer.where((c) => c.isPending).length;
   int get activeGenerations => _activeGenerations.length;
   VideoClip? get currentClip => _clipBuffer.firstWhereOrNull((c) => c.isReady || c.isPlaying);
@@ -143,7 +143,7 @@ class ClipQueueManager {
     _logStateChange('initialize:start');
     _clipBuffer.clear();
     
-    while (_clipBuffer.length < Configuration.renderQueueBufferSize) {
+    while (_clipBuffer.length < Configuration.instance.renderQueueBufferSize) {
       if (_isDisposed) return; // Check disposed state during initialization
       
       final newClip = VideoClip(
@@ -199,7 +199,7 @@ class ClipQueueManager {
     if (_isDisposed) return;
 
     // First ensure we have the correct buffer size
-    while (_clipBuffer.length < Configuration.renderQueueBufferSize) {
+    while (_clipBuffer.length < Configuration.instance.renderQueueBufferSize) {
       final newClip = VideoClip(
         prompt: "${video.title}\n${video.description}",
         seed: video.useFixedSeed && video.seed > 0 ? video.seed : generateSeed(),
@@ -234,7 +234,7 @@ class ClipQueueManager {
         .toList();
 
     // Calculate available generation slots
-    final availableSlots = Configuration.renderQueueMaxConcurrentGenerations - _activeGenerations.length;
+    final availableSlots = Configuration.instance.renderQueueMaxConcurrentGenerations - _activeGenerations.length;
 
     if (availableSlots > 0 && pendingClips.isNotEmpty) {
       final clipsToGenerate = pendingClips.take(availableSlots).toList();

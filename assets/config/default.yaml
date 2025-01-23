@@ -1,0 +1,48 @@
+ui:
+  product_name: AppName
+  
+  render_queue:
+  # how many clips should be stored in advance
+  buffer_size: 4
+
+  # how many requests for clips can be run in parallel
+  max_concurrent_generations: 2
+
+  # start playback as soon as we have 1 video over 4 (25%)
+  minimum_buffer_percent_to_start_playback: 25
+
+video:
+
+  # transition time between each clip
+  # the exit (older) clip will see its playback time reduced by this amount
+  transition_buffer_duration_ms: 300
+
+  # how long a generated clip should be, in Duration
+  original_clip_duration_seconds: 4
+
+  # The model works on resolutions that are divisible by 32
+  # and number of frames that are divisible by 8 + 1 (e.g. 257).
+  # 
+  # In case the resolution or number of frames are not divisible
+  # by 32 or 8 + 1, the input will be padded with -1 and then
+  # cropped to the desired resolution and number of frames.
+  # 
+  # The model works best on resolutions under 720 x 1280 and
+  # number of frames below 257.
+
+  # number of inference steps
+  # this has a direct impact in performance obviously,
+  # you can try to go to low values like 12 or 14 on "safe bet" prompts,
+  # but if you need a more uncommon topic, you need to go to 18 steps or more
+  num_inference_steps: 30
+
+  # original frame-rate of each clip (before we slow them down)
+  # in frames per second (so an integer)
+  original_clip_frame_rate: 25
+
+  original_clip_width: 544
+  original_clip_height: 320
+
+  # to do more with less, we slow down the videos (a 3s video will become a 4s video)
+  # but if you are GPU rich feel feel to play them back at 100% of their speed!
+  clip_playback_speed: 0.7

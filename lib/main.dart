@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:aitube2/config/config.dart';
 import 'package:aitube2/services/settings_service.dart';
 import 'package:aitube2/services/websocket_api_service.dart';
 import 'package:aitube2/theme/colors.dart';
@@ -8,6 +9,8 @@ import 'services/cache_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Configuration.instance.initialize();
 
     // Initialize services
   await Future.wait([
@@ -25,7 +28,7 @@ class AiTubeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AiTube',
+      title: Configuration.instance.uiProductName,
       theme: ThemeData.dark().copyWith(
         colorScheme: const ColorScheme.dark(
           surface: AiTubeColors.surface,

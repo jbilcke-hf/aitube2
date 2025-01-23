@@ -18,7 +18,7 @@ from gradio_client import Client
 import random
 import yaml
 
-from api_config import DEFAULT_TEXT_MODEL, DEFAULT_IMAGE_MODEL, TEXT_MODEL, IMAGE_MODEL, NUM_SPACES, BASE_SPACE_NAME, HF_TOKEN, SECRET_TOKEN
+from api_config import *
 
 # Configure logging
 logging.basicConfig(
@@ -99,62 +99,58 @@ def sanitize_yaml_response(response_text: str) -> str:
     return '\n'.join(sanitized_lines)
 
 @dataclass
-class Space:
+class Endpoint:
     id: int
     url: str
-    client: Client
     busy: bool = False
     last_used: float = 0
 
-class SpaceManager:
+class EndpointManager:
     def __init__(self):
-        self.spaces: List[Space] = []
+        self.endpoints: List[Endpoint] = []
         self.lock = Lock()
-        self.space_queue: Queue[Space] = Queue()
-        self.initialize_spaces()
+        self.endpoint_queue: Queue[Endpoint] = Queue()
+        self.initialize_endpoints()
 
-    def initialize_spaces(self):
-        """Initialize the list of spaces"""
-        for i in range(NUM_SPACES):
-            space_id = i + 1
-            space_url = f"https://jbilcke-hf-ai-tube-model-ltxv-{space_id}.hf.space"
-            client = Client(f"{BASE_SPACE_NAME}-{space_id}")
-            space = Space(id=space_id, url=space_url, client=client)
-            self.spaces.append(space)
-            self.space_queue.put_nowait(space)
+    def initialize_endpoints(self):
+        """Initialize the list of endpoints"""
+        for i, url in enumerate(VIDEO_ROUND_ROBIN_ENDPOINT_URLS):
+            endpoint = Endpoint(id=i + 1, url=url)
+            self.endpoints.append(endpoint)
+            self.endpoint_queue.put_nowait(endpoint)
 
     @asynccontextmanager
-    async def get_space(self, max_wait_time: int = 45):
-        """Get the next available space using a context manager"""
+    async def get_endpoint(self, max_wait_time: int = 10):
+        """Get the next available endpoint using a context manager"""
         start_time = time.time()
-        space = None
+        endpoint = None
         
         try:
             while True:
                 if time.time() - start_time > max_wait_time:
-                    raise TimeoutError(f"Could not acquire a space within {max_wait_time} seconds")
+                    raise TimeoutError(f"Could not acquire an endpoint within {max_wait_time} seconds")
 
                 try:
-                    space = self.space_queue.get_nowait()
+                    endpoint = self.endpoint_queue.get_nowait()
                     async with self.lock:
-                        if not space.busy:
-                            space.busy = True
-                            space.last_used = time.time()
+                        if not endpoint.busy:
+                            endpoint.busy = True
+                            endpoint.last_used = time.time()
                             break
                         else:
-                            await self.space_queue.put(space)
+                            await self.endpoint_queue.put(endpoint)
                 except asyncio.QueueEmpty:
                     await asyncio.sleep(0.5)
                     continue
 
-            yield space
+            yield endpoint
 
         finally:
-            if space:
+            if endpoint:
                 async with self.lock:
-                    space.busy = False
-                    space.last_used = time.time()
-                    await self.space_queue.put(space)
+                    endpoint.busy = False
+                    endpoint.last_used = time.time()
+                    await self.endpoint_queue.put(endpoint)
 
 class ChatRoom:
     def __init__(self):
@@ -173,7 +169,7 @@ class ChatRoom:
 class VideoGenerationAPI:
     def __init__(self):
         self.inference_client = InferenceClient(token=HF_TOKEN)
-        self.space_manager = SpaceManager()
+        self.endpoint_manager = EndpointManager()
         self.active_requests: Dict[str, asyncio.Future] = {}
         self.chat_rooms = defaultdict(ChatRoom)
         self.video_events: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -409,16 +405,34 @@ Your caption:"""
             "num_frames": options.get('num_frames', 153),
         }
 
-        async with self.space_manager.get_space() as space:
-            logger.info(f"Using space {space.id} for video generation with prompt: {prompt}")
-            result = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: space.client.predict(
-                    **params,
-                    api_name="/generate_video_from_text"
-                )
-            )
-            return result
+        async with self.endpoint_manager.get_endpoint() as endpoint:
+            logger.info(f"Using endpoint {endpoint.id} for video generation with prompt: {prompt}")
+            
+            async with ClientSession() as session:
+                async with session.post(
+                    endpoint.url,
+                    headers={
+                        "Accept": "application/json",
+                        "Authorization": f"Bearer {HF_TOKEN}",
+                        "Content-Type": "application/json"
+                    },
+                    json=payload
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        raise Exception(f"Video generation failed: HTTP {response.status} - {error_text}")
+                    
+                    result = await response.json()
+                    
+                    if "error" in result:
+                        raise Exception(f"Video generation failed: {result['error']}")
+                    
+                    video_data_uri = result.get("video")
+                    if not video_data_uri:
+                        raise Exception("No video data in response")
+                    
+                    return video_data_uri
+
 
     async def handle_chat_message(self, data: dict, ws: web.WebSocketResponse) -> dict:
         """Process and broadcast a chat message"""

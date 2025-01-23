@@ -5,7 +5,7 @@ from aiohttp import web, WSMsgType
 from typing import Dict, Any
 from api_core import VideoGenerationAPI
 
-from api_config import NUM_SPACES
+from api_config import *
 
 # Configure logging
 logging.basicConfig(
@@ -183,7 +183,7 @@ async def process_chat_queue(queue: asyncio.Queue, ws: web.WebSocketResponse):
 async def process_video_queue(queue: asyncio.Queue, ws: web.WebSocketResponse):
     """Process multiple video generation requests in parallel"""
     active_tasks = set()
-    MAX_CONCURRENT = NUM_SPACES  # Match client's max concurrent generations
+    MAX_CONCURRENT = len(VIDEO_ROUND_ROBIN_ENDPOINT_URLS)  # Match client's max concurrent generations
 
     async def process_single_request(data):
         try:

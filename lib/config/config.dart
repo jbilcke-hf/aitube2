@@ -1,25 +1,86 @@
-
-import 'package:aitube2/config/config_default.dart';
-import 'package:aitube2/config/config_highquality.dart';
+import 'package:flutter/services.dart';
+import 'package:yaml/yaml.dart';
 
 class Configuration {
+  static Configuration? _instance;
+  static Configuration get instance => _instance ??= Configuration._();
+
+  late Map<String, dynamic> _config;
+  
+  // Prevent multiple instances
+  Configuration._();
+
+  static const String _defaultConfigPath = 'assets/config/default.yaml';
+  
+  Future<void> initialize() async {
+    // Load default config first
+    final defaultYaml = await rootBundle.loadString(_defaultConfigPath);
+    _config = _convertYamlToMap(loadYaml(defaultYaml));
+
+    // Get custom config path from environment
+    const customConfigPath = String.fromEnvironment(
+      'CONFIG_PATH',
+      defaultValue: 'assets/config/aitube.yaml'
+    );
+
+    try {
+      // Load and merge custom config
+      final customYaml = await rootBundle.loadString(customConfigPath);
+      final customConfig = _convertYamlToMap(loadYaml(customYaml));
+      _mergeConfig(customConfig);
+    } catch (e) {
+      print('Warning: Could not load custom config from $customConfigPath: $e');
+    }
+  }
+
+  Map<String, dynamic> _convertYamlToMap(YamlMap yamlMap) {
+    Map<String, dynamic> result = {};
+    for (var entry in yamlMap.entries) {
+      if (entry.value is YamlMap) {
+        result[entry.key.toString()] = _convertYamlToMap(entry.value);
+      } else {
+        result[entry.key.toString()] = entry.value;
+      }
+    }
+    return result;
+  }
+
+  void _mergeConfig(Map<String, dynamic> customConfig) {
+    for (var entry in customConfig.entries) {
+      if (entry.value is Map<String, dynamic> && 
+          _config[entry.key] is Map<String, dynamic>) {
+        _mergeConfig(entry.value);
+      } else {
+        _config[entry.key] = entry.value;
+      }
+    }
+  }
+
+  // Getters for configuration values
+
+  String get uiProductName => 
+      _config['ui']['product_name'];
 
   // how many clips should be stored in advance
-  static const int renderQueueBufferSize = ConfigurationHighQuality.renderQueueBufferSize;
+  int get renderQueueBufferSize => 
+      _config['render_queue']['buffer_size'];
 
   // how many requests for clips can be run in parallel
-  static const int renderQueueMaxConcurrentGenerations = ConfigurationHighQuality.renderQueueMaxConcurrentGenerations;
+  int get renderQueueMaxConcurrentGenerations => 
+      _config['render_queue']['max_concurrent_generations'];
 
-  // start playback as soon as we have 1 video over 4
-  static const int minimumBufferPercentToStartPlayback = DefaultConfiguration.minimumBufferPercentToStartPlayback;
+  // start playback as soon as we have a certain number of videoclips in memory (eg 25%)
+  int get minimumBufferPercentToStartPlayback => 
+      _config['render_queue']['minimum_buffer_percent_to_start_playback'];
 
   // transition time between each clip
   // the exit (older) clip will see its playback time reduced by this amount
-  static const transitionBufferDuration = DefaultConfiguration.transitionBufferDuration;
+  Duration get transitionBufferDuration => 
+      Duration(milliseconds: _config['video']['transition_buffer_duration_ms']);
 
   // how long a generated clip should be, in Duration
-  static const originalClipDuration = DefaultConfiguration.originalClipDuration;
-
+  Duration get originalClipDuration => 
+      Duration(seconds: _config['video']['original_clip_duration_seconds']);
 
   // The model works on resolutions that are divisible by 32
   // and number of frames that are divisible by 8 + 1 (e.g. 257).
@@ -35,24 +96,31 @@ class Configuration {
   // this has a direct impact in performance obviously,
   // you can try to go to low values like 12 or 14 on "safe bet" prompts,
   // but if you need a more uncommon topic, you need to go to 18 steps or more
-  static const int numInferenceSteps = DefaultConfiguration.numInferenceSteps;
+  int get numInferenceSteps => 
+      _config['video']['num_inference_steps'];
+
 
   // original frame-rate of each clip (before we slow them down)
   // in frames per second (so an integer)
-  static const int originalClipFrameRate = DefaultConfiguration.originalClipFrameRate;
+  int get originalClipFrameRate => 
+      _config['video']['original_clip_frame_rate'];
 
-  static const int originalClipWidth = ConfigurationHighQuality.originalClipWidth;
-  static const int originalClipHeight = ConfigurationHighQuality.originalClipHeight;
+  int get originalClipWidth => 
+      _config['video']['original_clip_width'];
 
-  // to do more with less, we slow down the videos (a 3s video will become a 4s video)
+  int get originalClipHeight => 
+      _config['video']['original_clip_height'];
+
+  // to do more with less, we can slow down the videos (a 3s video will become a 4s video)
   // but if you are GPU rich feel feel to play them back at 100% of their speed!
-  static const double clipPlaybackSpeed = ConfigurationHighQuality.clipPlaybackSpeed;
+  double get clipPlaybackSpeed => 
+      _config['video']['clip_playback_speed'].toDouble();
+
+  // Computed properties
 
   // original frame-rate of each clip (before we slow them down)
   // in frames (so an integer)
-
   // ----------------------- IMPORTANT --------------------------
-  
   // the model has to use a number of frames that can be divided by 8
   // so originalClipNumberOfFrames might not be the actual/final value
   //
@@ -61,22 +129,23 @@ class Configuration {
   //        =========================================
   //
   // ------------------------------------------------------------
-  static final originalClipNumberOfFrames = DefaultConfiguration.originalClipFrameRate * DefaultConfiguration.originalClipDuration.inSeconds;
+  int get originalClipNumberOfFrames => 
+      originalClipFrameRate * originalClipDuration.inSeconds;
 
-  static final originalClipPlaybackDuration = DefaultConfiguration.originalClipDuration - DefaultConfiguration.transitionBufferDuration;
+  Duration get originalClipPlaybackDuration => 
+      originalClipDuration - transitionBufferDuration;
 
   // how long a clip should last during playback, in Duration
   // that can be different from its original speed
   // for instance if play back a 3 seconds video at 75% speed, we get:
   // 3 * (1 / 0.75) = 4
-  static final actualClipDuration = Duration(
+  Duration get actualClipDuration => Duration(
     // we use millis for greater precision
-    milliseconds: (
-      // important: we internally use double for the calculation
-      DefaultConfiguration.originalClipDuration.inMilliseconds.toDouble() * (1.0 / ConfigurationHighQuality.clipPlaybackSpeed)
-    ).round()
+    // important: we internally use double for the calculation
+    milliseconds: (originalClipDuration.inMilliseconds.toDouble() * 
+        (1.0 / clipPlaybackSpeed)).round()
   );
 
-  static final actualClipPlaybackDuration = actualClipDuration - DefaultConfiguration.transitionBufferDuration;
-
+  Duration get actualClipPlaybackDuration => 
+      actualClipDuration - transitionBufferDuration;
 }

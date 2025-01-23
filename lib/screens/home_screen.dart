@@ -1,5 +1,6 @@
 // lib/screens/home_screen.dart
 import 'dart:async';
+import 'package:aitube2/config/config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:aitube2/screens/video_screen.dart';
@@ -216,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AiTube'),
+        title: Text(Configuration.instance.uiProductName),
         backgroundColor: AiTubeColors.background,
         actions: [
           Padding(

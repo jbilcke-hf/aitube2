@@ -81,7 +81,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     final totalClips = _queueManager.clipBuffer.length;
     final bufferPercentage = (readyClips / totalClips * 100);
 
-    if (bufferPercentage >= Configuration.minimumBufferPercentToStartPlayback) {
+    if (bufferPercentage >= Configuration.instance.minimumBufferPercentToStartPlayback) {
       _startedInitialPlayback = true;
       _startInitialPlayback();
     } else {
@@ -107,7 +107,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     _playbackTimer?.cancel();
     _nextClipCheckTimer?.cancel();
 
-    _playbackTimer = Timer(Configuration.actualClipPlaybackDuration, () {
+    _playbackTimer = Timer(Configuration.instance.actualClipPlaybackDuration, () {
       if (_isDisposed || !_isPlaying) return;
       
       final nextClip = _queueManager.nextReadyClip;
@@ -184,7 +184,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
       newController.setLooping(true);
       newController.setVolume(0.0);
-      newController.setPlaybackSpeed(Configuration.clipPlaybackSpeed);
+      newController.setPlaybackSpeed(Configuration.instance.clipPlaybackSpeed);
 
       final oldController = _currentController;
       final oldClip = _currentClip;
@@ -422,7 +422,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
         // we always keep things looping. We never want any video to stop.
         nextController.setLooping(true);
         nextController.setVolume(0.0);
-        nextController.setPlaybackSpeed(Configuration.clipPlaybackSpeed);
+        nextController.setPlaybackSpeed(Configuration.instance.clipPlaybackSpeed);
 
         _nextController?.dispose();
         _nextController = nextController;
@@ -599,7 +599,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
 
     // since we are playing clips at a reduced speed, they each last "longer"
     // eg a video playing back at 0.5 speed will see its duration multiplied by 2
-    final actualDurationPerClip = Configuration.actualClipPlaybackDuration;
+    final actualDurationPerClip = Configuration.instance.actualClipPlaybackDuration;
 
     final remainingSeconds = readyOrPlayingClips * actualDurationPerClip.inSeconds;
 
