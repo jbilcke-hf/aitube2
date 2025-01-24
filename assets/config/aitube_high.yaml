@@ -1,7 +1,7 @@
 ui:
   product_name: AiTube
   
-  render_queue:
+render_queue:
   # how many clips should be stored in advance
   buffer_size: 5
 

@@ -49,7 +49,10 @@ class Configuration {
     for (var entry in customConfig.entries) {
       if (entry.value is Map<String, dynamic> && 
           _config[entry.key] is Map<String, dynamic>) {
-        _mergeConfig(entry.value);
+        _config[entry.key] = {
+          ..._config[entry.key] as Map<String, dynamic>,
+          ...entry.value as Map<String, dynamic>
+        };
       } else {
         _config[entry.key] = entry.value;
       }

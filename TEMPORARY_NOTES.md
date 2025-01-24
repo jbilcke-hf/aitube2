@@ -34,6 +34,6 @@ HF_TOKEN="<USE YOUR OWN TOKEN>" \
 
 ```bash
 
-flutter run --dart-define=CONFIG_PATH=assets/config/demo.yaml -d chrome
+flutter run --dart-define=CONFIG_PATH=assets/config/aitube_low.yaml -d chrome
 ```
 

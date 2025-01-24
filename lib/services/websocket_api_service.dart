@@ -288,15 +288,15 @@ class WebSocketApiService {
   String get statusMessage {
     switch (_status) {
       case ConnectionStatus.disconnected:
-        return 'Disconnected from server';
+        return 'Disconnected ';
       case ConnectionStatus.connecting:
-        return 'Connecting to server...';
+        return 'Connecting...';
       case ConnectionStatus.connected:
-        return 'Connected to server';
+        return 'Connected';
       case ConnectionStatus.reconnecting:
         return 'Connection lost. Attempting to reconnect (${_reconnectAttempts + 1}/$_maxReconnectAttempts)...';
       case ConnectionStatus.error:
-        return 'Failed to connect to server';
+        return 'Failed to connect';
     }
   }
 

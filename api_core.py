@@ -200,6 +200,7 @@ class VideoGenerationAPI:
     Make the result unique and different from previous search results. ONLY RETURN YAML AND WITH ENGLISH CONTENT, NOT CHINESE - DO NOT ADD ANY OTHER COMMENT!"""
 
         try:
+            #print(f"search_video(): calling self.inference_client.text_generation({prompt}, model={TEXT_MODEL}, max_new_tokens=300, temperature=0.65)")
             response = await asyncio.get_event_loop().run_in_executor(
                 None,
                 lambda: self.inference_client.text_generation(
@@ -234,12 +235,15 @@ class VideoGenerationAPI:
             tags = [str(t).strip() for t in tags if t and isinstance(t, (str, int, float))]
 
             # Generate thumbnail
+            #print(f"calling self.generate_thumbnail({title}, {description})")
             try:
-                thumbnail = await self.generate_thumbnail(title, description)
+                #thumbnail = await self.generate_thumbnail(title, description)
+                raise ValueError("thumbnail generation is too buggy and slow right now")
             except Exception as e:
                 logger.error(f"Thumbnail generation failed: {str(e)}")
                 thumbnail = ""
 
+            print("got response thumbnail")
             # Return valid result with all required fields
             return {
                 'id': str(uuid.uuid4()),
@@ -391,22 +395,89 @@ Your caption:"""
         # Use the generated caption as the prompt
         prompt = f"{clip_caption}, high quality, cinematic, 4K, intricate details"
         
-        params = {
-            "secret_token": SECRET_TOKEN,
-            "prompt": prompt,
-            "enhance_prompt_toggle": options.get('enhance_prompt', False),
-            "negative_prompt": options.get('negative_prompt', 'low quality, worst quality, deformed, distorted, disfigured, blurry, text, watermark'),
-            "frame_rate": options.get('frame_rate', 25),
-            "seed": options.get('seed', 42),
-            "num_inference_steps": options.get('num_inference_steps', 12),
-            "guidance_scale": options.get('guidance_scale', 3.3),
-            "height": options.get('height', 416),
-            "width": options.get('width', 640),
-            "num_frames": options.get('num_frames', 153),
+        json_payload = {
+            "inputs": {
+                "prompt": prompt,
+            },
+            "parameters": {
+
+                # ------------------- settings for LTX-Video -----------------------
+                
+                # this param doesn't exist
+                #"enhance_prompt_toggle": options.get('enhance_prompt', False),
+
+                #"negative_prompt": "saturated, highlight, overexposed, highlighted, overlit, shaking, too bright, worst quality, inconsistent motion, blurry, jittery, distorted, cropped, watermarked, watermark, logo, subtitle, subtitles, lowres",
+                "negative_prompt": options.get('negative_prompt', 'low quality, worst quality, deformed, distorted, disfigured, blurry, text, watermark'),
+
+                # note about resolution:
+                # we cannot use 720 since it cannot be divided by 32
+                #
+                # for a cinematic look:
+                "width": options.get('width', 640),
+                "height": options.get('height', 416),
+
+                # this is a hack to fool LTX-Video into believing our input image is an actual video frame with poor encoding quality
+                #"input_image_quality": 70,
+
+                # for a vertical video look:
+                #"width": 480,
+                #"height": 768,
+
+                # LTX-Video requires a frame number divisible by 8, plus one frame
+                # note: glitches might appear if you use more than 168 frames
+                "num_frames": options.get('num_frames', 153),
+
+                # using 30 steps seems to be enough for most cases, otherwise use 50 for best quality
+                # I think using a large number of steps (> 30) might create some overexposure and saturation
+                "num_inference_steps": options.get('num_inference_steps', 12),
+
+                # values between 3.0 and 4.0 are nice
+                "guidance_scale": options.get('guidance_scale', 3.3),
+
+                "seed": options.get('seed', 42),
+            
+                # ----------------------------------------------------------------
+
+                # ------------------- settings for Varnish -----------------------
+                # This will double the number of frames.
+                # You can activate this if you want:
+                # - a slow motion effect (in that case use double_num_frames=True and fps=24, 25 or 30)
+                # - a HD soap / video game effect (in that case use double_num_frames=True and fps=60)
+                "double_num_frames": False, # <- False as we want real-time generation
+
+                # controls the number of frames per second
+                # use this in combination with the num_frames and double_num_frames settings to control the duration and "feel" of your video
+                # typical values are: 24, 25, 30, 60
+                "fps": options.get('frame_rate', 25),
+
+                # upscale the video using Real-ESRGAN.
+                # This upscaling algorithm is relatively fast,
+                # but might create an uncanny "3D render" or "drawing" effect.
+                "super_resolution": False, # <- False as we want real-time generation
+
+                # for cosmetic purposes and get a "cinematic" feel, you can optionally add some film grain.
+                # it is not recommended to add film grain if your theme doesn't match (film grain is great for black & white, retro looks)
+                # and if you do, adding more than 12% will start to negatively impact file size (video codecs aren't great are compressing film grain)
+                # 0% = no grain
+                # 10% = a bit of grain
+                "grain_amount": 0, # value between 0-100
+
+
+                # The range of the CRF scale is 0–51, where:
+                # 0 is lossless (for 8 bit only, for 10 bit use -qp 0)
+                # 23 is the default
+                # 51 is worst quality possible
+                # A lower value generally leads to higher quality, and a subjectively sane range is 17–28.
+                # Consider 17 or 18 to be visually lossless or nearly so;
+                # it should look the same or nearly the same as the input but it isn't technically lossless.
+                # The range is exponential, so increasing the CRF value +6 results in roughly half the bitrate / file size, while -6 leads to roughly twice the bitrate.
+                #"quality": 18,
+
+            }
         }
 
         async with self.endpoint_manager.get_endpoint() as endpoint:
-            logger.info(f"Using endpoint {endpoint.id} for video generation with prompt: {prompt}")
+            #logger.info(f"Using endpoint {endpoint.id} for video generation with prompt: {prompt}")
             
             async with ClientSession() as session:
                 async with session.post(
@@ -416,7 +487,7 @@ Your caption:"""
                         "Authorization": f"Bearer {HF_TOKEN}",
                         "Content-Type": "application/json"
                     },
-                    json=payload
+                    json=json_payload
                 ) as response:
                     if response.status != 200:
                         error_text = await response.text()

@@ -138,28 +138,32 @@ class ClipQueueManager {
   Future<void> initialize() async {
     if (_isDisposed) return;
     
-    _logEvent('Initializing ClipQueueManager');
-
     _logStateChange('initialize:start');
     _clipBuffer.clear();
     
-    while (_clipBuffer.length < Configuration.instance.renderQueueBufferSize) {
-      if (_isDisposed) return; // Check disposed state during initialization
-      
-      final newClip = VideoClip(
-        prompt: "${video.title}\n${video.description}",
-        seed: video.useFixedSeed && video.seed > 0 ? video.seed : generateSeed(),
-      );
-      _clipBuffer.add(newClip);
-      _logEvent('Added initial clip ${newClip.seed} to buffer');
+    try {
+      final bufferSize = Configuration.instance.renderQueueBufferSize;
+      while (_clipBuffer.length < bufferSize) {
+        if (_isDisposed) return;
+        
+        final newClip = VideoClip(
+          prompt: "${video.title}\n${video.description}",
+          seed: video.useFixedSeed && video.seed > 0 ? video.seed : generateSeed(),
+        );
+        _clipBuffer.add(newClip);
+        _logEvent('Added initial clip ${newClip.seed} to buffer');
+      }
+
+      if (_isDisposed) return;
+
+      _startBufferCheck();
+      await _fillBuffer();
+      _logEvent('Initialization complete. Buffer size: ${_clipBuffer.length}');
+      printQueueState();
+    } catch (e) {
+      _logEvent('Initialization error: $e');
+      rethrow;
     }
-
-    if (_isDisposed) return;
-
-    _startBufferCheck();
-    await _fillBuffer();
-    _logEvent('Initialization complete. Buffer size: ${_clipBuffer.length}');
-    printQueueState();
 
     _logStateChange('initialize:complete');
   }

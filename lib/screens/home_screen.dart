@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? Colors.red.withOpacity(0.1)
                 : Colors.orange.withOpacity(0.1);
         
-        final iconColor = status == ConnectionStatus.connected
+        final textAndIconColor = status == ConnectionStatus.connected
             ? Colors.green
             : status == ConnectionStatus.error
                 ? Colors.red
@@ -139,12 +139,12 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: iconColor, size: 20),
+              Icon(icon, color: textAndIconColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 statusMessage,
                 style: TextStyle(
-                  color: iconColor,
+                  color: textAndIconColor,
                   fontSize: 14,
                 ),
               ),
@@ -213,6 +213,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  int _getColumnCount(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width >= 1536) { // 2XL
+      return 6;
+    } else if (width >= 1280) { // XL
+      return 5;
+    } else if (width >= 1024) { // LG
+      return 4;
+    } else if (width >= 768) { // MD
+      return 3;
+    } else {
+      return 2; // Default for small screens
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -262,29 +277,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       textAlign: TextAlign.center,
                     ),
                   )
-                : MasonryGridView.count(
-                    padding: const EdgeInsets.all(16),
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    itemCount: _results.length,
-                    itemBuilder: (context, index) {
-                      return GestureDetector(
-                        onTap: () {
-                          _stopSearch(); // Stop search but keep results
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VideoScreen(
-                                video: _results[index],
-                              ),
+                  : MasonryGridView.count(
+                  padding: const EdgeInsets.all(16),
+                  crossAxisCount: _getColumnCount(context),
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  itemCount: _results.length,
+                  itemBuilder: (context, index) {
+                    return GestureDetector(
+                      onTap: () {
+                        _stopSearch(); // Stop search but keep results
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => VideoScreen(
+                              video: _results[index],
                             ),
-                          );
-                        },
-                        child: VideoCard(video: _results[index]),
-                      );
-                    },
-                  ),
+                          ),
+                        );
+                      },
+                      child: VideoCard(video: _results[index]),
+                    );
+                  },
+                ),
           ),
         ],
       ),
