@@ -6,7 +6,7 @@ render_queue:
   buffer_size: 5
 
   # how many requests for clips can be run in parallel
-  max_concurrent_generations: 3
+  max_concurrent_generations: 4
 
   # start playback as soon as we have about 1 video over 3 (30~33%)
   minimum_buffer_percent_to_start_playback: 30

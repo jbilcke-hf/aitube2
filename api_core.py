@@ -37,6 +37,9 @@ def sanitize_yaml_response(response_text: str) -> str:
     Sanitize and format AI response into valid YAML.
     Returns properly formatted YAML string.
     """
+
+    response_text = response_text.split("```")[0]
+
     # Remove any markdown code block indicators and YAML document markers
     clean_text = re.sub(r'```yaml|```|---|\.\.\.$', '', response_text.strip())
     
@@ -193,11 +196,23 @@ class VideoGenerationAPI:
 
     async def search_video(self, query: str, search_count: int = 0, attempt_count: int = 0) -> Optional[dict]:
         """Generate a single search result using HF text generation"""
-        prompt = f"""[Search Query #{search_count}, Attempt #{attempt_count}] Generate a video search result object for the query: "{query}"
-    The YAML response object include a title, description, and tags, consistent with what we can find on a video sharing platform.
-    Format the result as a YAML object with only those fields: "title" (single string of a short sentence), "description" (single string of a few sentences to describe the visuals), and "tags" (array of strings). Do not add any other field.
-    The description is a prompt for a generative AI, so please describe the visual elements of the scene in details, including: camera angle and focus, people's appearance, age, look, costumes, clothes, the location visual characteristics and geometry, lighting, action, objects, weather, textures, lighting.
-    Make the result unique and different from previous search results. ONLY RETURN YAML AND WITH ENGLISH CONTENT, NOT CHINESE - DO NOT ADD ANY OTHER COMMENT!"""
+        prompt = f"""# Instruction
+Your response MUST be a YAML object containing a title, description, and tags, consistent with what we can find on a video sharing platform.
+Format your YAML response with only those fields: "title" (single string of a short sentence), "description" (single string of a few sentences to describe the visuals), and "tags" (array of strings). Do not add any other field.
+The description is a prompt for a generative AI, so please describe the visual elements of the scene in details, including: camera angle and focus, people's appearance, their age, actions, precise look, clothing, the location characteristics, lighting, action, objects, weather.
+Make the result unique and different from previous search results. ONLY RETURN YAML AND WITH ENGLISH CONTENT, NOT CHINESE - DO NOT ADD ANY OTHER COMMENT!
+
+# Context
+This is attempt {attempt_count} at generating search result number {search_count}.
+
+# Input
+Describe the video for this theme: "{query}".
+Don't forget to repeat singular elements about the characters, location.. in your description.
+
+# Output
+
+```yaml
+title: \""""
 
         try:
             #print(f"search_video(): calling self.inference_client.text_generation({prompt}, model={TEXT_MODEL}, max_new_tokens=300, temperature=0.65)")
@@ -207,11 +222,13 @@ class VideoGenerationAPI:
                     prompt,
                     model=TEXT_MODEL,
                     max_new_tokens=300,
-                    temperature=0.65
+                    temperature=0.6
                 )
             )
 
-            response_text = re.sub(r'^\s*\.\s*\n', '', response.strip())
+            #print("response: ", response)
+
+            response_text = re.sub(r'^\s*\.\s*\n', '', f"title: \"{response.strip()}")
             sanitized_yaml = sanitize_yaml_response(response_text)
             
             try:

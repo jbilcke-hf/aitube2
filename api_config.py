@@ -3,7 +3,11 @@ import os
 RODUCT_NAME = os.environ.get('PRODUCT_NAME', 'AiTube')
 
 
-TEXT_MODEL = os.environ.get('HF_TEXT_MODEL', 'HuggingFaceH4/zephyr-7b-beta')
+TEXT_MODEL = os.environ.get('HF_TEXT_MODEL',
+    #'HuggingFaceH4/zephyr-7b-beta'
+    'HuggingFaceTB/SmolLM2-1.7B-Instruct'
+)
+
 IMAGE_MODEL = os.environ.get('HF_IMAGE_MODEL', '')
 
 

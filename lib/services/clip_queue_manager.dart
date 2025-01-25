@@ -638,6 +638,8 @@ class ClipQueueManager {
       debugPrint('Ready: ${currentState['readyClips']}');
       debugPrint('Playing: ${currentState['playingClips']}');
       debugPrint('Generating: ${currentState['generatingClips']}');
+      
+      /*
       debugPrint('Pending: ${currentState['pendingClips']}');
       debugPrint('Failed: ${currentState['failedClips']}');
       debugPrint('History: ${currentState['historySize']}');
@@ -658,6 +660,8 @@ class ClipQueueManager {
 
       debugPrint('=====================================\n');
 
+      */
+      
       _lastLoggedState = currentState;
       _lastStateLogTime = DateTime.now();
     }
